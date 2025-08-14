@@ -351,3 +351,7 @@ module.exports = nextConfig;
 - Follow kebab-case for all file and folder names
 - Keep architecture simple and maintainable
 - Generate types regularly when database schema changes
+
+## References
+
+- [Supabase TypeScript Support Documentation](https://supabase.com/docs/reference/javascript/typescript-support) - Official guide for TypeScript integration with Supabase
