@@ -1,0 +1,20 @@
+# API HTTP Request
+# Replace the URL below with your endpoint
+@url = https://hook.us1.make.com/86flxkkastxfyg2b5cksipdxdczmbixp
+
+### Single POST Request
+POST {{url}}
+Content-Type: application/json
+
+{
+  "thread_id": "thread_12345_abcde",
+  "user_id": "user_67890_fghij",
+  "channel": "slack",
+  "role": "user",
+  "content": "que onda?",
+  "categories": "{'sales'}",
+  "metadata": {"source": "api_test", "timestamp": "2024-01-15T10:30:00Z", "version": "1.0"},
+  "status": "sent",
+  "attachments": [],
+  "tokens": 150
+}

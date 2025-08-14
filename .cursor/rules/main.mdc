@@ -1,0 +1,6 @@
+---
+alwaysApply: true
+---
+
+- Always use css vars instead sass vars
+- No corrars 'next build' para probar, estoy corriendo un 'next dev' en la terminal y se chocan

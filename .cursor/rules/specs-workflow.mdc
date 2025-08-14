@@ -1,0 +1,65 @@
+# Specs Workflow
+
+## Propósito de la carpeta `/specs`
+
+La carpeta `/specs` contiene especificaciones técnicas numeradas para implementar cambios y mejoras en el proyecto. Cada especificación es un archivo markdown independiente que describe cambios específicos al código, nuevas funcionalidades o refactoring.
+
+## Flujo de trabajo
+
+### Estructura de organización
+
+- `/specs/` - Contiene todas las especificaciones activas
+- `/specs/done/` - Especificaciones que ya han sido aplicadas e implementadas
+
+### Convención de nombres
+
+- Las especificaciones se nombran con números secuenciales: `01-`, `02-`, etc.
+- Ejemplo: `01-rename-package-name.md`
+
+### Proceso de trabajo
+
+1. **Crear especificaciones**: Al generar specs nuevas, NO resumir el contenido en la respuesta. Solo avisar que está lista y el usuario revisará el archivo directamente
+2. **Especificaciones activas**: Se mantienen en `/specs/` hasta ser implementadas
+3. **Especificaciones completadas**: Se mueven a `/specs/done/` después de la implementación
+4. **Documentación**: Las especificaciones se documentan directamente en sus archivos markdown
+
+## Tipos de especificaciones
+
+### Refactoring
+
+- Renombrar paquetes y archivos
+- Actualizar dependencias
+- Reorganizar estructura de código
+
+### Infraestructura
+
+- Configuración de servicios externos
+- Extensión de tipos y esquemas
+- Validación de datos
+
+### Nuevas funcionalidades
+
+- Implementación de features
+- Integración de APIs
+- Mejoras de UX/UI
+
+### Testing y calidad
+
+- Tests de integración
+- Actualización de exports
+- Validación end-to-end
+
+## Comandos útiles
+
+```bash
+# Mover especificación completada
+mv specs/01-spec-name.md specs/done/
+
+# Verificar estado
+ls specs/
+ls specs/done/
+```
+
+## Referencias importantes
+
+- Las especificaciones se documentan directamente en sus archivos markdown
