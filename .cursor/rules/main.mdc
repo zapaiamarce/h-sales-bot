@@ -2,5 +2,179 @@
 alwaysApply: true
 ---
 
+# H-Sales-Bot Workspace Rules
+
+## General Rules
+
 - Always use css vars instead sass vars
 - No corrars 'next build' para probar, estoy corriendo un 'next dev' en la terminal y se chocan
+
+## Package Structure
+
+### Workspace Organization
+
+```
+packages/
+├── tools/                  # Tools compartidas - DOMINIO + ADAPTER AI
+│   ├── src/
+│   │   ├── crm/
+│   │   │   ├── index.ts        # FUNCS de dominio puras (createLeadFn, qualifyLeadFn…)
+│   │   │   ├── types.ts        # Tipos del dominio CRM
+│   │   │   ├── mock.ts         # impl en memoria para tests/dev
+│   │   │   └── ai/
+│   │   │       └── index.ts    # adapters AI SDK: tool(createLead), tool(qualifyLead)
+│   │   ├── email/
+│   │   │   ├── index.ts        # FUNCS de dominio puras (sendEmailFn, scheduleEmailFn…)
+│   │   │   ├── types.ts        # Tipos del dominio email
+│   │   │   ├── mock.ts         # impl en memoria para tests/dev
+│   │   │   └── ai/
+│   │   │       └── index.ts    # adapters AI SDK: tool(sendEmail), tool(scheduleEmail)
+│   │   ├── kb/
+│   │   │   ├── index.ts        # FUNCS de dominio puras (searchFn, createArticleFn…)
+│   │   │   ├── types.ts        # Tipos del dominio KB
+│   │   │   ├── mock.ts         # impl en memoria para tests/dev
+│   │   │   └── ai/
+│   │   │       └── index.ts    # adapters AI SDK: tool(search), tool(createArticle)
+│   │   └── index.ts            # re-exports convenientes (sin mezclar dominios)
+│   ├── package.json
+│   └── tsconfig.json
+├── {type}-agent/           # Naming convention: sales-agent, support-agent, etc.
+│   ├── src/
+│   │   ├── index.ts        # Exporta xxxAgent() y xxxAgentTool()
+│   │   ├── agent.ts        # Lógica del agente con guardrails
+│   │   ├── agent.test.ts   # Tests del agente
+│   │   ├── agent-tool.ts   # Wrapper del agente como tool
+│   │   └── prompts.ts      # Prompts específicos del agente
+│   ├── package.json
+│   └── tsconfig.json
+└── prompts/                # Prompts compartidos
+    ├── src/
+    │   ├── index.ts
+    │   ├── guards.ts       # Guardias comunes (JSON only, etc.)
+    │   ├── sales-prompts.ts
+    │   ├── support-prompts.ts
+    │   └── types.ts        # Tipos de prompts y respuestas
+    ├── package.json
+    └── tsconfig.json
+```
+
+### Shared Tools Pattern
+
+Separar "dominio" de "adapter AI" con submódulo `/ai`:
+
+- `tools/<area>/index.ts` → **dominio** (funciones puras)
+- `tools/<area>/ai/index.ts` → **wrappers AI SDK** (`tool(...)`) que usan las funcs de dominio
+- Los **agentes importan**:
+  - dominio (`tools/crm`) cuando quieren usarlo "a mano", o
+  - **tools AI** (`tools/crm/ai`) cuando quieren exponerlo al LLM
+
+**Ventajas:**
+
+- **Sin ciclos**: los tools no importan agentes
+- **Tests rápidos**: testeás `*Fn` sin LLM
+- **DI simple**: podés inyectar `mock` o `adapter real` por env
+- **Tree‑shaking**: sólo cargas `/ai` si el agente lo necesita
+
+**Index de tools (re‑exports claros):**
+
+```typescript
+// packages/tools/src/index.ts
+export * as crm from "./crm"; // dominio
+export * as crmAi from "./crm/ai"; // adapters AI SDK
+export * as kb from "./kb";
+export * as kbAi from "./kb/ai";
+export * as email from "./email";
+export * as emailAi from "./email/ai";
+```
+
+### Agent Usage Pattern
+
+Los agentes eligen qué usar: dominio o AI tools:
+
+```typescript
+// packages/sales-agent/src/tools.ts
+import { crmAi, emailAi } from "@h-sales-bot/tools";
+// tools expuestos al modelo:
+export const salesAgentTools = {
+  createLead: crmAi.createLead,
+  sendEmail: emailAi.sendEmail,
+};
+
+// O usar dominio directamente cuando necesites lógica manual:
+import { crm } from "@h-sales-bot/tools";
+const leadResult = await crm.createLeadFn({
+  name: "John",
+  email: "john@example.com",
+});
+```
+
+### Agent Composition Pattern
+
+Los agentes pueden usar otros agentes a través de wrappers:
+
+```typescript
+// packages/lead-management-agent/src/tools.ts
+import { salesAgentTool } from "@h-sales-bot/sales-agent";
+import { supportAgentTool } from "@h-sales-bot/support-agent";
+import { crmAi } from "@h-sales-bot/tools";
+import { tool } from "ai";
+import { z } from "zod";
+
+export const leadManagementTools = {
+  // Usa el sales agent
+  salesAgent: salesAgentTool,
+
+  // Usa el support agent
+  supportAgent: supportAgentTool,
+
+  // Tools específicas del lead management
+  createLead: crmAi.createLead,
+
+  routeLead: tool({
+    description: "Route a lead to the appropriate agent",
+    inputSchema: z.object({
+      leadId: z.string(),
+      intent: z.enum(["sales", "support", "general"]),
+      priority: z.enum(["high", "medium", "low"]),
+    }),
+    execute: async ({ leadId, intent, priority }) => {
+      // Lógica de routing
+      return { success: true, routedTo: intent };
+    },
+  }),
+};
+```
+
+## Development Guidelines
+
+### Agent Implementation
+
+- Usar Vercel AI SDK patterns (Sequential, Routing, Parallel, Multi-Step Tool Usage)
+- TypeScript-only, sin build process
+- Backend-only, sin frontend integration
+- Tests con Vitest junto a cada archivo
+
+### Package Dependencies
+
+- Usar workspace dependencies: `"@h-sales-bot/tools": "workspace:*"`
+- Las tools compartidas son reutilizables entre agentes
+- Los agentes pueden usar otros agentes a través de wrappers
+- Mantener dependencias mínimas y enfocadas
+- Composición de agentes para funcionalidades complejas
+- Evitar ciclos entre tools y agentes
+
+### Naming Conventions
+
+- kebab-case para nombres de paquetes: `{type}-agent`
+- camelCase para nombres de archivos
+- PascalCase para nombres de clases
+- camelCase para variables y funciones
+- UPPER_SNAKE_CASE para constantes
+
+### General Rules
+
+- No corrars 'next build' para probar, estoy corriendo un 'next dev' en la terminal y se chocan
+- Tools NO pueden importar nada de `packages/*-agent/` (evitar ciclos)
+- Usar telemetría mínima en todos los agentes y tools
+- Validar todas las salidas con Zod
+- Implementar guardrails operativos (step limits, token budget, timeouts)
